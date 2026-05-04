@@ -129,6 +129,11 @@ function round(n: number, decimals = 0): number {
 /**
  * Schätzt den realistisch erreichbaren Eigenverbrauchsanteil basierend auf
  * Verbrauch, Anlagengrösse, Batterie und elektrischen Lasten (WP, EV).
+ *
+ * Kalibriert anhand realer DoubleA-Offerten:
+ * - 14.4 kWp / 16 kWh / 6'000 kWh / kein WP/EV → 37 % Eigenverbrauch
+ * - 23.0 kWp / 24 kWh / ~12'000 kWh / mit WP → 47 % Eigenverbrauch
+ * - 13.4 kWp / 16 kWh / ~46'000 kWh / mit WP+EV → 71 % Eigenverbrauch
  */
 function estimateSelfConsumptionShare(args: {
   productionKwh: number;
@@ -140,31 +145,57 @@ function estimateSelfConsumptionShare(args: {
   const { productionKwh, consumptionKwh, hasBattery, hasHeatPump, hasEv } = args;
   const ratio = productionKwh / Math.max(consumptionKwh, 1);
 
-  let base = hasBattery ? 0.6 : 0.32;
+  // Basis ohne Speicher (kalibriert auf reale Daten):
+  let base = hasBattery ? 0.4 : 0.25;
+
+  // Speicher schubst Eigenverbrauch grob um +12 Prozentpunkte
   if (hasBattery) {
-    if (ratio < 1.1) base = 0.7;
-    else if (ratio > 1.6) base = 0.55;
+    if (ratio < 1.0) base = 0.5;
+    else if (ratio > 2.0) base = 0.35;
+    else base = 0.42;
   } else {
-    if (ratio < 0.8) base = 0.4;
-    else if (ratio > 1.5) base = 0.28;
+    if (ratio < 1.0) base = 0.32;
+    else if (ratio > 2.0) base = 0.22;
   }
 
-  if (hasHeatPump) base += 0.05;
-  if (hasEv) base += 0.05;
+  // Wärmepumpe und EV erhöhen den Eigenverbrauch deutlich (verschoben in
+  // Tagstunden via Smart-Steuerung). Aus Realdaten: WP allein bringt ~+10 PP,
+  // EV nochmal ~+5 PP, beide kombiniert ~+25 PP wegen sehr hohem Verbrauch.
+  if (hasHeatPump) base += 0.12;
+  if (hasEv) base += 0.08;
+  if (hasHeatPump && hasEv) base += 0.05;
 
-  return clamp(base, 0.25, 0.78);
+  return clamp(base, 0.25, 0.85);
+}
+
+/**
+ * Echte Schweizer Marktpreise pro kWp, kalibriert anhand DoubleA-Offerten
+ * 2026 (vor Rabatt, inkl. MwSt 8.1 %, inkl. Montage und Meldewesen).
+ *
+ * Skaleneffekte: grössere Anlagen werden pro kWp deutlich günstiger weil
+ * Montage, Gerüst und Meldewesen Pauschalkosten sind.
+ */
+function pricePerKwp(kwp: number): number {
+  if (kwp <= 6) return 2100;
+  if (kwp <= 10) return 1900;
+  if (kwp <= 16) return 1750;
+  if (kwp <= 25) return 1550;
+  if (kwp <= 40) return 1400;
+  return 1300;
 }
 
 function pricePerKwpRange(kwp: number): { low: number; high: number } {
-  if (kwp <= 12) return { low: 2300, high: 3300 };
-  if (kwp >= 30) return { low: 1800, high: 2600 };
-  // Linear interpolation für 12–30 kWp
-  const t = (kwp - 12) / (30 - 12);
-  return {
-    low: round(2300 - t * (2300 - 1800)),
-    high: round(3300 - t * (3300 - 2600)),
-  };
+  const mid = pricePerKwp(kwp);
+  // ±10 % Spanne für Marktvariation (Komponenten-Wahl, Dachsituation)
+  return { low: Math.round(mid * 0.9), high: Math.round(mid * 1.15) };
 }
+
+/** Speicherpreis pro kWh — DoubleA nutzt GoodWe ~CHF 350/kWh konstant. */
+const BATTERY_CHF_PER_KWH = 350;
+/** Pauschal Wallbox 11 kW (GoodWe HCA Gen2a) inkl. Installation. */
+const WALLBOX_CHF = 1950;
+/** Pronovo EIV 2026: ca. CHF 360/kWp Grundbeitrag (auch im Datenfall belegt). */
+const PRONOVO_CHF_PER_KWP = 360;
 
 /**
  * Hauptberechnung. Gibt Spannen ("Range") zurück, weil eine seriöse
@@ -214,10 +245,22 @@ export function calculateSolar(input: SolarCalculatorInput): SolarCalculatorResu
     optimistic = round(realistic * 1.08);
   }
 
+  // Speichergrösse: aus realen DoubleA-Offerten ableiten
+  // - 6'000 kWh / 14 kWp / kein WP/EV → 16 kWh
+  // - 12'000 kWh / 23 kWp / mit WP → 24 kWh
+  // - 46'000 kWh (mit WP) / 13 kWp → 16 kWh
+  // → grobe Faustregel: 1 kWh Speicher pro 1 kWp Anlage, gerundet auf
+  //   8 / 16 / 24 / 32 kWh-Schritte (GoodWe-Module à 8 kWh).
   const wantsBattery = input.wantsBattery === "ja";
-  const recommendedBatteryKwh = wantsBattery
-    ? clamp(round(input.annualConsumptionKwh / 1000), 5, 20)
-    : 0;
+  let recommendedBatteryKwh = 0;
+  if (wantsBattery) {
+    const target = Math.round(recommendedKwp * 1.0);
+    if (target <= 10) recommendedBatteryKwh = 8;
+    else if (target <= 18) recommendedBatteryKwh = 16;
+    else if (target <= 26) recommendedBatteryKwh = 24;
+    else if (target <= 34) recommendedBatteryKwh = 32;
+    else recommendedBatteryKwh = 40;
+  }
 
   const selfConsumptionShare = estimateSelfConsumptionShare({
     productionKwh: realistic,
@@ -246,17 +289,24 @@ export function calculateSolar(input: SolarCalculatorInput): SolarCalculatorResu
     optimistic: savings(optimistic),
   };
 
+  // Investitionsschätzung basiert auf realen DoubleA-Offerten:
+  // - 14.4 kWp / 16 kWh → CHF 30'870 (mit 10% Rabatt)
+  // - 13.4 kWp / 16 kWh → CHF 23'932 (mit 10% Rabatt + KLEIV BE 4824)
+  // - 23.0 kWp / 24 kWh / Wallbox → CHF 42'356 (mit 15% Rabatt)
+  // → vor Rabatt liegen die echten Brutto-Werte bei 1500-1900 CHF/kWp
+  //   (kleinere Anlage = höher) und 350 CHF/kWh Speicher.
   const pvPriceRange = pricePerKwpRange(recommendedKwp);
-  const batteryLow = recommendedBatteryKwh * 700;
-  const batteryHigh = recommendedBatteryKwh * 1200;
+  const batteryCost = recommendedBatteryKwh * BATTERY_CHF_PER_KWH;
+  const wallboxCost = input.hasEv ? WALLBOX_CHF : 0;
   const investmentChf = {
-    low: round(recommendedKwp * pvPriceRange.low + batteryLow),
-    high: round(recommendedKwp * pvPriceRange.high + batteryHigh),
+    low: round(recommendedKwp * pvPriceRange.low + batteryCost + wallboxCost),
+    high: round(recommendedKwp * pvPriceRange.high + batteryCost + wallboxCost),
   };
 
-  // Konservative, unverbindliche Förderspanne (Pronovo EIV grobe Indikation).
-  const subsidyLow = round(clamp(recommendedKwp, 0, 100) * 280);
-  const subsidyHigh = round(clamp(recommendedKwp, 0, 100) * 460);
+  // Pronovo EIV 2026: ~CHF 360/kWp Grundbeitrag (DoubleA-Offerten validiert
+  // exakt mit 360 CHF/kWp). Spanne dünn, weil der Wert sehr stabil ist.
+  const subsidyLow = round(recommendedKwp * (PRONOVO_CHF_PER_KWP - 30));
+  const subsidyHigh = round(recommendedKwp * (PRONOVO_CHF_PER_KWP + 30));
 
   const investNetLow = Math.max(0, investmentChf.low - subsidyHigh);
   const investNetHigh = Math.max(0, investmentChf.high - subsidyLow);

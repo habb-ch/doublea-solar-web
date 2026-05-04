@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, MapPin, Search } from "lucide-react";
 
@@ -16,6 +17,20 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
+
+// MapLibre läuft nur im Browser, nicht im SSR.
+const RoofMap = dynamic(
+  () => import("./roof-map").then((m) => m.RoofMap),
+  { ssr: false, loading: () => <MapSkeleton /> },
+);
+
+function MapSkeleton() {
+  return (
+    <div className="flex h-72 w-full items-center justify-center rounded-2xl border border-border bg-secondary/50 text-xs text-muted-foreground sm:h-80">
+      Karte wird geladen …
+    </div>
+  );
+}
 
 export type AddressStepSelection = {
   address: GeocodeResult;
@@ -303,8 +318,8 @@ export function AddressStep({ initialQuery = "", onSelect, onClear }: Props) {
                   {selectedAddress.label}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {selectedAddress.lat.toFixed(5)}°, {selectedAddress.lon.toFixed(5)}°
-                  {selectedAddress.canton && ` · Kanton ${selectedAddress.canton}`}
+                  {selectedAddress.canton && `Kanton ${selectedAddress.canton} · `}
+                  Klick auf die Karte, falls ein anderes Gebäude gemeint ist
                 </p>
               </div>
             </div>
@@ -313,9 +328,25 @@ export function AddressStep({ initialQuery = "", onSelect, onClear }: Props) {
               onClick={clearAddress}
               className="ring-focus rounded text-xs font-medium text-muted-foreground hover:text-foreground"
             >
-              Ändern
+              Adresse ändern
             </button>
           </div>
+
+          <RoofMap
+            lat={selectedAddress.lat}
+            lon={selectedAddress.lon}
+            showSonnendach
+            onMapClick={(newLat, newLon) => {
+              // Karten-Klick: nur die Koordinaten anpassen, Adress-Label
+              // bleibt gleich. So kann der User ein Nachbar-/Hinterhaus
+              // anwählen, dessen Adresse formal nicht im Geocoder steht.
+              setSelectedAddress({
+                ...selectedAddress,
+                lat: newLat,
+                lon: newLon,
+              });
+            }}
+          />
 
           {loadingRoofs && (
             <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-4 text-sm text-muted-foreground">
@@ -334,89 +365,43 @@ export function AddressStep({ initialQuery = "", onSelect, onClear }: Props) {
             </div>
           )}
 
-          {!loadingRoofs && roofs && roofs.buildings.length > 1 && (
-            <div className="rounded-2xl border border-border bg-card p-3">
-              <p className="px-2 pb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Mehrere Gebäude in der Nähe — wählen Sie Ihres
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {roofs.buildings.map((b) => (
-                  <button
-                    key={b.buildingId}
-                    type="button"
-                    onClick={() => selectBuilding(b)}
-                    aria-pressed={selectedBuildingId === b.buildingId}
-                    className={cn(
-                      "ring-focus rounded-xl border px-3 py-3 text-left transition-colors",
-                      selectedBuildingId === b.buildingId
-                        ? "border-[color:var(--solar-navy)] bg-[color:var(--solar-navy)] text-[color:var(--solar-navy-foreground)]"
-                        : "border-border bg-card hover:bg-secondary",
-                    )}
-                  >
-                    <p className="text-sm font-medium">
-                      Gebäude {b.totalAreaM2.toFixed(0)} m² · {b.segments.length}{" "}
-                      Dachfläche{b.segments.length === 1 ? "" : "n"}
-                    </p>
-                    <p className="text-xs opacity-80">
-                      {Intl.NumberFormat("de-CH").format(b.totalElectricityYieldKwhYear)} kWh/Jahr
-                      Modellertrag · Klasse Ø {b.averageSuitabilityClass.toFixed(1)}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {selectedBuilding && (
-            <div className="rounded-2xl border border-border bg-card p-4 lg:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-[color:var(--solar-emerald)]">
-                    Dachsegmente · BFE Sonnendach.ch
+          {selectedBuilding && selectedAggregate && (
+            <div className="rounded-2xl border border-[color:var(--solar-emerald)]/30 bg-[color:var(--solar-emerald)]/5 p-5">
+              <div className="flex items-start gap-3">
+                <div className="size-8 shrink-0 rounded-full bg-[color:var(--solar-emerald)]/20 text-[color:var(--solar-emerald)] flex items-center justify-center text-base font-bold">
+                  ✓
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Dach erkannt · {classLabel(selectedAggregate.averageSuitabilityClass)} geeignet
                   </p>
-                  <p className="mt-1 text-sm text-foreground">
-                    Wählen Sie die Flächen, die Sie für Photovoltaik nutzen möchten.
-                    Nicht ankreuzen: Flächen mit Lukarnen, Verschattung oder fremder
-                    Eigentümerschaft.
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {selectedAggregate.usableAreaM2.toFixed(0)} m² nutzbare Modulfläche · ca.{" "}
+                    {Intl.NumberFormat("de-CH").format(selectedAggregate.totalElectricityYieldKwhYear)}{" "}
+                    kWh Modellertrag pro Jahr · Datenquelle: BFE Sonnendach.ch
                   </p>
                 </div>
               </div>
 
-              <ul className="mt-4 grid gap-2">
-                {selectedBuilding.segments.map((s) => {
-                  const checked = selectedSegmentIds.has(s.id);
-                  return (
-                    <li key={s.id}>
-                      <SegmentRow
-                        segment={s}
-                        checked={checked}
-                        onToggle={() => toggleSegment(s.id)}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-
-              {selectedAggregate && (
-                <div className="mt-4 grid gap-3 rounded-xl border border-[color:var(--solar-emerald)]/30 bg-[color:var(--solar-emerald)]/5 p-4 sm:grid-cols-3">
-                  <Stat
-                    label="Ausgewählte Fläche"
-                    value={`${selectedAggregate.totalAreaM2.toFixed(0)} m²`}
-                    hint={`${selectedAggregate.usableAreaM2.toFixed(0)} m² nutzbar`}
-                  />
-                  <Stat
-                    label="Modellierter Ertrag"
-                    value={`${Intl.NumberFormat("de-CH").format(selectedAggregate.totalElectricityYieldKwhYear)} kWh/J`}
-                    hint={`Ø ${selectedAggregate.weightedSpecificIrradiationKwhM2Year} kWh/m²/J`}
-                  />
-                  <Stat
-                    label="Eignung"
-                    value={classLabel(selectedAggregate.averageSuitabilityClass)}
-                    hint={`${selectedAggregate.segmentCount} Segment${selectedAggregate.segmentCount === 1 ? "" : "e"}`}
-                  />
-                </div>
-              )}
-
+              <details className="mt-4 group">
+                <summary className="ring-focus cursor-pointer rounded-md text-xs font-medium text-muted-foreground hover:text-foreground select-none">
+                  Dachflächen einzeln anpassen ({selectedBuilding.segments.length} Segmente)
+                </summary>
+                <ul className="mt-3 grid gap-2">
+                  {selectedBuilding.segments.map((s) => {
+                    const checked = selectedSegmentIds.has(s.id);
+                    return (
+                      <li key={s.id}>
+                        <SegmentRow
+                          segment={s}
+                          checked={checked}
+                          onToggle={() => toggleSegment(s.id)}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </details>
             </div>
           )}
         </div>

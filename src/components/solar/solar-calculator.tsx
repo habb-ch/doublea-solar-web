@@ -81,7 +81,7 @@ const financingOptions: {
 const stepConfig = [
   {
     id: 0,
-    label: "Adresse & Dach",
+    label: "Standort & Dach",
     fields: [
       "canton",
       "roofAreaM2",
@@ -93,12 +93,24 @@ const stepConfig = [
   },
   {
     id: 1,
-    label: "Verbrauch & Profil",
+    label: "Verbrauch",
     fields: ["buildingType", "annualConsumptionKwh", "wantsBattery"],
+  },
+  {
+    id: 2,
+    label: "Kontakt",
+    fields: [],
   },
 ] as const;
 
 type StepKey = (typeof stepConfig)[number]["fields"][number];
+
+type LeadFields = {
+  name: string;
+  email: string;
+  phone: string;
+  consent: boolean;
+};
 
 const defaultValues: SolarCalculatorFormInput = {
   buildingType: "einfamilienhaus",
@@ -127,7 +139,18 @@ export function SolarCalculator() {
   const [result, setResult] = useState<SolarCalculatorResult | null>(null);
   const [showManualOverride, setShowManualOverride] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [lead, setLead] = useState<LeadFields>({
+    name: "",
+    email: "",
+    phone: "",
+    consent: false,
+  });
   const resultRef = useRef<HTMLDivElement | null>(null);
+
+  const leadValid =
+    lead.name.trim().length >= 2 &&
+    /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email.trim()) &&
+    lead.consent;
 
   const form = useForm<SolarCalculatorFormInput>({
     resolver: zodResolver(solarCalculatorSchema),
@@ -233,23 +256,37 @@ export function SolarCalculator() {
   }
 
   async function onSubmit(data: SolarCalculatorFormInput) {
+    if (!leadValid) {
+      toast.error("Bitte füllen Sie Ihre Kontaktdaten vollständig aus.");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/solar-calculation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: data }),
+        body: JSON.stringify({
+          input: data,
+          contact: {
+            name: lead.name,
+            email: lead.email,
+            phone: lead.phone || undefined,
+            consent: lead.consent,
+            source: "solarrechner",
+          },
+        }),
       });
       if (!res.ok) {
         const local = calculateSolar(data);
         setResult(local);
         toast.warning(
-          "Server konnte die Berechnung nicht speichern – wir zeigen Ihnen die lokale Auswertung.",
+          "Server konnte die Berechnung nicht speichern – wir zeigen Ihnen die lokale Auswertung. Wir haben Ihre Anfrage nicht erhalten — bitte kontaktieren Sie uns direkt.",
         );
         return;
       }
       const payload = (await res.json()) as { result: SolarCalculatorResult };
       setResult(payload.result);
+      toast.success("Anfrage gesendet — wir melden uns innert eines Werktags.");
     } catch {
       const local = calculateSolar(data);
       setResult(local);
@@ -264,6 +301,7 @@ export function SolarCalculator() {
     setStep(0);
     setShowManualOverride(false);
     setShowAdvanced(false);
+    setLead({ name: "", email: "", phone: "", consent: false });
     form.reset(defaultValues);
   }
 
@@ -611,6 +649,99 @@ export function SolarCalculator() {
                     )}
                   </FieldGroup>
                 )}
+
+                {step === 2 && (
+                  <FieldGroup>
+                    <div className="rounded-2xl border border-[color:var(--solar-emerald)]/30 bg-[color:var(--solar-emerald)]/5 p-5">
+                      <p className="text-sm font-medium text-foreground">
+                        Letzter Schritt — Ihre Kontaktdaten
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Wir senden Ihnen die persönliche Auswertung an Ihre E-Mail und melden
+                        uns innert eines Werktags für die nächsten Schritte. Ihre Anfrage wird
+                        gleichzeitig in unserem System erfasst.
+                      </p>
+                    </div>
+
+                    <Field>
+                      <FieldLabel htmlFor="lead-name">Name *</FieldLabel>
+                      <Input
+                        id="lead-name"
+                        autoComplete="name"
+                        placeholder="Vor- und Nachname"
+                        value={lead.name}
+                        onChange={(e) =>
+                          setLead((prev) => ({ ...prev, name: e.target.value }))
+                        }
+                        className="h-11"
+                      />
+                    </Field>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field>
+                        <FieldLabel htmlFor="lead-email">E-Mail *</FieldLabel>
+                        <Input
+                          id="lead-email"
+                          type="email"
+                          autoComplete="email"
+                          placeholder="ihre.adresse@example.ch"
+                          value={lead.email}
+                          onChange={(e) =>
+                            setLead((prev) => ({ ...prev, email: e.target.value }))
+                          }
+                          className="h-11"
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="lead-phone">Telefon (optional)</FieldLabel>
+                        <Input
+                          id="lead-phone"
+                          type="tel"
+                          autoComplete="tel"
+                          placeholder="+41 …"
+                          value={lead.phone}
+                          onChange={(e) =>
+                            setLead((prev) => ({ ...prev, phone: e.target.value }))
+                          }
+                          className="h-11"
+                        />
+                      </Field>
+                    </div>
+
+                    {(values.address || values.postalCode || values.city) && (
+                      <div className="rounded-xl border border-border bg-card/60 px-4 py-3 text-xs text-muted-foreground">
+                        <p className="font-medium text-foreground">Adresse aus Schritt 1</p>
+                        <p className="mt-0.5">
+                          {values.address ||
+                            `${values.postalCode || ""} ${values.city || ""}`.trim() ||
+                            "—"}
+                        </p>
+                      </div>
+                    )}
+
+                    <Field orientation="horizontal">
+                      <Switch
+                        id="lead-consent"
+                        checked={lead.consent}
+                        onCheckedChange={(v) =>
+                          setLead((prev) => ({ ...prev, consent: v }))
+                        }
+                      />
+                      <FieldContent>
+                        <FieldLabel htmlFor="lead-consent">
+                          Ich bin mit der{" "}
+                          <a href="/datenschutz" className="underline underline-offset-4">
+                            Datenschutzerklärung
+                          </a>{" "}
+                          einverstanden. *
+                        </FieldLabel>
+                        <FieldDescription>
+                          Wir nutzen Ihre Daten ausschliesslich zur Bearbeitung Ihrer Anfrage.
+                        </FieldDescription>
+                      </FieldContent>
+                    </Field>
+                  </FieldGroup>
+                )}
               </motion.div>
             </AnimatePresence>
 
@@ -662,16 +793,16 @@ export function SolarCalculator() {
               ) : (
                 <Button
                   type="submit"
-                  disabled={submitting || !isValid}
+                  disabled={submitting || !isValid || !leadValid}
                   className="h-11 rounded-xl bg-[color:var(--solar-gold)] px-5 text-[color:var(--solar-navy)] hover:bg-[color:var(--solar-gold)]/90"
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" /> Berechne …
+                      <Loader2 className="size-4 animate-spin" /> Sende …
                     </>
                   ) : (
                     <>
-                      <Sparkles className="size-4" /> Auswertung anzeigen
+                      <Sparkles className="size-4" /> Anfrage senden & Auswertung anzeigen
                     </>
                   )}
                 </Button>
