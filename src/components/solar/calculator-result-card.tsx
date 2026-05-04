@@ -6,6 +6,7 @@ import {
   BatteryCharging,
   Coins,
   LineChart as LineChartIcon,
+  Sparkles,
   Sun,
   TreePine,
   Zap,
@@ -83,9 +84,17 @@ export function CalculatorResultCard({ result, onReset }: Props) {
       <div className="surface-glass rounded-3xl p-6 lg:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--solar-emerald)]">
-              Ihre Erstauswertung
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--solar-emerald)]">
+                Ihre Erstauswertung
+              </p>
+              {result.dataSource === "sonnendach" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--solar-emerald)]/40 bg-[color:var(--solar-emerald)]/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--solar-emerald)]">
+                  <Sparkles className="size-3" />
+                  Bundesdaten · sonnendach.ch
+                </span>
+              )}
+            </div>
             <h2 className="mt-2 text-balance text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
               {result.recommendation.sizing}
             </h2>

@@ -24,11 +24,30 @@ export type WantsBattery = "ja" | "nein" | "unsicher";
 
 export type FinancingInterest = "ja" | "nein" | "unsicher";
 
+/**
+ * Aggregat aus Sonnendach.ch-Daten (BFE) für ein bestimmtes Gebäude.
+ * Wenn vorhanden, überschreibt es die Faustformel-Berechnung mit echten
+ * Bundes-Modellwerten.
+ */
+export type SonnendachAggregate = {
+  totalAreaM2: number;
+  usableAreaM2: number;
+  /** Summe `stromertrag` der ausgewählten Segmente (BFE-Modellwert kWh/Jahr). */
+  totalElectricityYieldKwhYear: number;
+  /** Mit Fläche gewichtete spezifische Einstrahlung (kWh/m²/Jahr). */
+  weightedSpecificIrradiationKwhM2Year: number;
+  /** Anzahl der einbezogenen Segmente. */
+  segmentCount: number;
+  /** Mittlere Eignungsklasse (1-5). */
+  averageSuitabilityClass: number;
+};
+
 export type SolarCalculatorInput = {
   buildingType: BuildingType;
   canton: CantonCode | string;
   postalCode?: string;
   city?: string;
+  address?: string;
   roofAreaM2: number;
   usableRoofPercent: number;
   orientation: Orientation;
@@ -41,6 +60,8 @@ export type SolarCalculatorInput = {
   electricityPriceRappen?: number;
   feedInTariffRappen?: number;
   financingInterest?: FinancingInterest;
+  /** Optional: präzise Bundesdaten aus Sonnendach.ch. */
+  sonnendach?: SonnendachAggregate;
 };
 
 export type SolarCalculatorResult = {
@@ -67,6 +88,8 @@ export type SolarCalculatorResult = {
     shading: number;
     specificYield: number;
   };
+  /** Welche Datengrundlage in die Auswertung eingeflossen ist. */
+  dataSource: "sonnendach" | "estimation";
   disclaimers: string[];
 };
 
@@ -146,29 +169,50 @@ function pricePerKwpRange(kwp: number): { low: number; high: number } {
 /**
  * Hauptberechnung. Gibt Spannen ("Range") zurück, weil eine seriöse
  * Erstschätzung ohne Standortbegehung keine Punktwerte liefern kann.
+ *
+ * Wenn `input.sonnendach` vorhanden ist, basieren Anlagengrösse und
+ * Jahresproduktion direkt auf den BFE-Bundesdaten (sonnendach.ch) und sind
+ * deutlich präziser als die Faustformel-basierte Schätzung.
  */
 export function calculateSolar(input: SolarCalculatorInput): SolarCalculatorResult {
-  const usablePercent = clamp(input.usableRoofPercent, 30, 100) / 100;
-  const usableAreaM2 = round(input.roofAreaM2 * usablePercent, 1);
+  const sonnendach = input.sonnendach;
+  const usingSonnendach = Boolean(sonnendach);
 
-  // 1 kWp benötigt grob ~5 m² nutzbare Modulfläche (ca. 200 W/m²).
-  const recommendedKwp = round(usableAreaM2 / 5, 1);
+  let usableAreaM2: number;
+  let recommendedKwp: number;
+  let realistic: number;
+  let conservative: number;
+  let optimistic: number;
+  let specificYield: number;
 
-  const canton = getCanton(input.canton);
-  const specificYield = canton?.specificYield ?? 1000;
+  // Faktoren werden für Sonnendach intern auf 1.0 gesetzt — die Bundesdaten
+  // berücksichtigen Ausrichtung, Neigung und Verschattung bereits.
+  const fO = usingSonnendach ? 1 : orientationFactor[input.orientation];
+  const fT = usingSonnendach ? 1 : tiltFactor[input.tilt];
+  const fS = usingSonnendach ? 1 : shadingFactor[input.shading];
 
-  const fO = orientationFactor[input.orientation];
-  const fT = tiltFactor[input.tilt];
-  const fS = shadingFactor[input.shading];
+  if (sonnendach) {
+    usableAreaM2 = round(sonnendach.usableAreaM2, 1);
+    // 1 kWp ~ 5 m² Modulfläche (≈200 W/m²).
+    recommendedKwp = round(sonnendach.usableAreaM2 / 5, 1);
+    // BFE-Modellwert verwenden + leichte Spanne für Modul-Effizienz-Variation.
+    realistic = round(sonnendach.totalElectricityYieldKwhYear);
+    conservative = round(realistic * 0.92);
+    optimistic = round(realistic * 1.05);
+    specificYield = round(sonnendach.weightedSpecificIrradiationKwhM2Year);
+  } else {
+    const usablePercent = clamp(input.usableRoofPercent, 30, 100) / 100;
+    usableAreaM2 = round(input.roofAreaM2 * usablePercent, 1);
+    recommendedKwp = round(usableAreaM2 / 5, 1);
+    const canton = getCanton(input.canton);
+    specificYield = canton?.specificYield ?? 1000;
 
-  // Variante A: Pauschal über nutzbare Dachfläche (~200 kWh/m²/Jahr Mittelland).
-  const yieldArea = usableAreaM2 * 200 * fO * fT * fS;
-  // Variante B: kWp * spezifischer Ertrag pro Kanton.
-  const yieldKwp = recommendedKwp * specificYield * fO * fT * fS;
-  // Plausibilisierter Mittelwert.
-  const realistic = round((yieldArea + yieldKwp) / 2);
-  const conservative = round(realistic * 0.88);
-  const optimistic = round(realistic * 1.08);
+    const yieldArea = usableAreaM2 * 200 * fO * fT * fS;
+    const yieldKwp = recommendedKwp * specificYield * fO * fT * fS;
+    realistic = round((yieldArea + yieldKwp) / 2);
+    conservative = round(realistic * 0.88);
+    optimistic = round(realistic * 1.08);
+  }
 
   const wantsBattery = input.wantsBattery === "ja";
   const recommendedBatteryKwh = wantsBattery
@@ -275,10 +319,18 @@ export function calculateSolar(input: SolarCalculatorInput): SolarCalculatorResu
       shading: fS,
       specificYield,
     },
-    disclaimers: [
-      "Diese Auswertung ist eine fundierte Erstschätzung und ersetzt keine technische Standortanalyse.",
-      "Mögliche Förderungen (z. B. Pronovo EIV) müssen tagesaktuell geprüft werden und sind nicht garantiert.",
-      "Investitionsspannen sind Schweizer Marktrichtwerte und keine verbindliche Offerte.",
-    ],
+    dataSource: usingSonnendach ? "sonnendach" : "estimation",
+    disclaimers: usingSonnendach
+      ? [
+          "Diese Auswertung basiert auf den BFE-Sonnendach.ch-Daten zu Ihrem Gebäude und ist deutlich präziser als generische Schätzungen.",
+          "Eine technische Standortbegehung bleibt für die endgültige Auslegung empfohlen — z. B. zur Beurteilung Statik, Verschattung durch Vegetation und elektrischer Anschlusspunkte.",
+          "Mögliche Förderungen (z. B. Pronovo EIV) müssen tagesaktuell geprüft werden und sind nicht garantiert.",
+          "Investitionsspannen sind Schweizer Marktrichtwerte und keine verbindliche Offerte.",
+        ]
+      : [
+          "Diese Auswertung ist eine fundierte Erstschätzung und ersetzt keine technische Standortanalyse.",
+          "Mögliche Förderungen (z. B. Pronovo EIV) müssen tagesaktuell geprüft werden und sind nicht garantiert.",
+          "Investitionsspannen sind Schweizer Marktrichtwerte und keine verbindliche Offerte.",
+        ],
   };
 }

@@ -26,6 +26,15 @@ export type LeadInput = z.infer<typeof leadSchema>;
 
 export const cantonEnum = z.enum(cantonCodes as readonly [string, ...string[]]);
 
+export const sonnendachAggregateSchema = z.object({
+  totalAreaM2: z.number().min(0).max(50_000),
+  usableAreaM2: z.number().min(0).max(50_000),
+  totalElectricityYieldKwhYear: z.number().min(0).max(5_000_000),
+  weightedSpecificIrradiationKwhM2Year: z.number().min(200).max(2000),
+  segmentCount: z.number().int().min(1).max(200),
+  averageSuitabilityClass: z.number().min(1).max(5),
+});
+
 export const solarCalculatorSchema = z.object({
   buildingType: z.enum([
     "einfamilienhaus",
@@ -42,6 +51,7 @@ export const solarCalculatorSchema = z.object({
     .optional()
     .or(z.literal("")),
   city: z.string().trim().max(80).optional().or(z.literal("")),
+  address: z.string().trim().max(160).optional().or(z.literal("")),
   roofAreaM2: z.number().min(10, "Mindestens 10 m².").max(5000),
   usableRoofPercent: z.number().min(30).max(100),
   orientation: z.enum([
@@ -62,6 +72,7 @@ export const solarCalculatorSchema = z.object({
   electricityPriceRappen: z.number().min(5).max(80).optional(),
   feedInTariffRappen: z.number().min(0).max(60).optional(),
   financingInterest: z.enum(["ja", "nein", "unsicher"]).optional(),
+  sonnendach: sonnendachAggregateSchema.optional(),
 });
 
 export type SolarCalculatorFormInput = z.infer<typeof solarCalculatorSchema>;

@@ -39,9 +39,11 @@ import {
   calculateSolar,
   type SolarCalculatorResult,
 } from "@/lib/solar/calculate";
+import { cantonCodes, type CantonCode } from "@/lib/solar/canton-data";
 import { CantonSelect } from "./canton-select";
 import { RoofInputs } from "./roof-inputs";
 import { CalculatorResultCard } from "./calculator-result-card";
+import { AddressStep, type AddressStepSelection } from "./address-step";
 
 const buildingTypes: {
   value: SolarCalculatorFormInput["buildingType"];
@@ -94,9 +96,10 @@ const financingOptions: {
 ];
 
 const stepConfig = [
-  { id: 0, label: "Standort & Gebäude", fields: ["buildingType", "canton"] },
+  { id: 0, label: "Adresse", fields: [] },
+  { id: 1, label: "Standort & Gebäude", fields: ["buildingType", "canton"] },
   {
-    id: 1,
+    id: 2,
     label: "Dach",
     fields: [
       "roofAreaM2",
@@ -107,7 +110,7 @@ const stepConfig = [
     ],
   },
   {
-    id: 2,
+    id: 3,
     label: "Verbrauch & Lasten",
     fields: ["annualConsumptionKwh", "wantsBattery"],
   },
@@ -178,15 +181,64 @@ export function SolarCalculator() {
   const progress = ((step + 1) / (stepConfig.length + 1)) * 100;
 
   async function nextStep() {
-    const fields = stepConfig[step]?.fields as readonly StepKey[] | undefined;
-    if (!fields) return;
-    const ok = await trigger(fields as StepKey[]);
-    if (!ok) return;
+    const cfg = stepConfig[step];
+    if (!cfg) return;
+    if (cfg.fields.length > 0) {
+      const ok = await trigger(cfg.fields as readonly StepKey[] as StepKey[]);
+      if (!ok) return;
+    }
     setStep((s) => Math.min(s + 1, stepConfig.length));
   }
 
   function prevStep() {
     setStep((s) => Math.max(0, s - 1));
+  }
+
+  function applySonnendachSelection(selection: AddressStepSelection) {
+    const { address, building, selectedSegmentIds } = selection;
+    const segs = building.segments.filter((s) => selectedSegmentIds.includes(s.id));
+    if (segs.length === 0) return;
+    const totalArea = segs.reduce((s, x) => s + x.areaM2, 0);
+    const totalUsable = segs.reduce((s, x) => s + x.usableAreaM2, 0);
+    const totalYield = segs.reduce((s, x) => s + x.electricityYieldKwhYear, 0);
+    const weightedIrr =
+      segs.reduce((s, x) => s + x.specificIrradiationKwhM2Year * x.areaM2, 0) /
+      Math.max(totalArea, 1);
+    const avgClass =
+      segs.reduce((s, x) => s + x.suitabilityClass * x.areaM2, 0) /
+      Math.max(totalArea, 1);
+
+    const ct = (address.canton ?? "").toUpperCase();
+    const cantonValue = (cantonCodes as readonly string[]).includes(ct)
+      ? (ct as CantonCode)
+      : values.canton;
+
+    setValue("canton", cantonValue, { shouldValidate: true });
+    if (address.postalCode) setValue("postalCode", address.postalCode, { shouldValidate: true });
+    if (address.city) setValue("city", address.city, { shouldValidate: true });
+    setValue("address", address.label, { shouldValidate: false });
+    setValue("roofAreaM2", Math.round(totalArea), { shouldValidate: true });
+    setValue(
+      "usableRoofPercent",
+      Math.max(30, Math.min(100, Math.round((totalUsable / Math.max(totalArea, 1)) * 100))),
+      { shouldValidate: true },
+    );
+    setValue("sonnendach", {
+      totalAreaM2: Math.round(totalArea * 10) / 10,
+      usableAreaM2: Math.round(totalUsable * 10) / 10,
+      totalElectricityYieldKwhYear: Math.round(totalYield),
+      weightedSpecificIrradiationKwhM2Year: Math.round(weightedIrr),
+      segmentCount: segs.length,
+      averageSuitabilityClass: Math.round(avgClass * 10) / 10,
+    });
+
+    setStep(1);
+  }
+
+  function skipAddressStep() {
+    setValue("sonnendach", undefined as never, { shouldValidate: false });
+    setValue("address", "", { shouldValidate: false });
+    setStep(1);
   }
 
   async function onSubmit(data: SolarCalculatorFormInput) {
@@ -278,7 +330,28 @@ export function SolarCalculator() {
                 transition={{ duration: reduce ? 0 : 0.25 }}
               >
                 {step === 0 && (
+                  <AddressStep
+                    initialQuery={values.address}
+                    onSelect={applySonnendachSelection}
+                    onSkip={skipAddressStep}
+                  />
+                )}
+
+                {step === 1 && (
                   <FieldGroup>
+                    {values.sonnendach && (
+                      <div className="flex items-start gap-3 rounded-2xl border border-[color:var(--solar-emerald)]/30 bg-[color:var(--solar-emerald)]/5 px-4 py-3">
+                        <Sparkles className="mt-0.5 size-4 shrink-0 text-[color:var(--solar-emerald)]" />
+                        <div className="text-sm">
+                          <p className="font-medium text-foreground">Bundesdaten aktiv</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Kanton, PLZ und Dachfläche stammen aus Sonnendach.ch (BFE) zu{" "}
+                            <span className="font-medium">{values.address}</span>. Sie können die
+                            Werte unten weiterhin anpassen.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     <FieldSet>
                       <FieldLegend>Gebäudetyp</FieldLegend>
                       <FieldDescription>
@@ -350,9 +423,28 @@ export function SolarCalculator() {
                   </FieldGroup>
                 )}
 
-                {step === 1 && <RoofInputs form={form} />}
-
                 {step === 2 && (
+                  <FieldGroup>
+                    {values.sonnendach && (
+                      <div className="flex items-start gap-3 rounded-2xl border border-[color:var(--solar-emerald)]/30 bg-[color:var(--solar-emerald)]/5 px-4 py-3">
+                        <Sparkles className="mt-0.5 size-4 shrink-0 text-[color:var(--solar-emerald)]" />
+                        <div className="text-sm">
+                          <p className="font-medium text-foreground">
+                            Dachdaten aus Sonnendach.ch übernommen
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Ausrichtung, Neigung und Verschattung sind in den BFE-Daten bereits
+                            verarbeitet. Sie müssen unten nichts eintragen — wir nutzen die
+                            Bundesdaten direkt für die Berechnung.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <RoofInputs form={form} />
+                  </FieldGroup>
+                )}
+
+                {step === 3 && (
                   <FieldGroup>
                     <Field>
                       <FieldLabel htmlFor="annualConsumptionKwh">
@@ -501,7 +593,7 @@ export function SolarCalculator() {
             </AnimatePresence>
 
             {/* Live-Quick-Stats */}
-            {livePreview && step < stepConfig.length && (
+            {livePreview && step > 0 && step < stepConfig.length && (
               <div className="mt-6 grid gap-2 rounded-2xl border border-dashed border-border bg-background/40 p-4 text-xs text-muted-foreground sm:grid-cols-3">
                 <span>
                   Ungefähre Anlage:{" "}
@@ -530,12 +622,13 @@ export function SolarCalculator() {
               </div>
             )}
 
+            {step > 0 && (
             <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-6">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={prevStep}
-                disabled={step === 0 || submitting}
+                disabled={submitting}
                 className="h-11 px-3"
               >
                 <ArrowLeft className="size-4" /> Zurück
@@ -568,6 +661,7 @@ export function SolarCalculator() {
                 </Button>
               )}
             </div>
+            )}
           </form>
         ) : (
           <div ref={resultRef} className="px-6 py-8 lg:px-8 lg:py-10">
