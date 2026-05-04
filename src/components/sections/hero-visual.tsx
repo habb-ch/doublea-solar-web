@@ -14,7 +14,7 @@ export function HeroVisual() {
       {/* Sun glow */}
       <div className="absolute -top-10 -right-10 size-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(245,184,65,0.42)_0%,transparent_60%)] blur-2xl" />
       {/* Emerald glow */}
-      <div className="absolute -bottom-16 -left-16 size-80 rounded-full bg-[radial-gradient(circle_at_center,rgba(14,122,95,0.38)_0%,transparent_60%)] blur-2xl" />
+      <div className="absolute -bottom-16 -left-16 size-80 rounded-full bg-[radial-gradient(circle_at_center,rgba(107,160,37,0.38)_0%,transparent_60%)] blur-2xl" />
 
       <svg
         viewBox="0 0 600 480"

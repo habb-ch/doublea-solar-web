@@ -14,7 +14,9 @@
   --color-solar-navy: var(--solar-navy);
   --color-solar-navy-foreground: var(--solar-navy-foreground);
   --color-solar-emerald: var(--solar-emerald);
+  --color-solar-leaf: var(--solar-leaf);
   --color-solar-gold: var(--solar-gold);
+  --color-solar-orange: var(--solar-orange);
   --color-solar-cream: var(--solar-cream);
 
   --color-sidebar-ring: var(--sidebar-ring);
@@ -69,24 +71,26 @@
   --secondary-foreground: #0b1f33;
   --muted: #eef2ee;
   --muted-foreground: #667085;
-  --accent: #0e7a5f;
+  --accent: #6ba025;
   --accent-foreground: #ffffff;
   --destructive: oklch(0.577 0.245 27.325);
   --border: rgba(11, 31, 51, 0.08);
   --input: rgba(11, 31, 51, 0.12);
-  --ring: rgba(14, 122, 95, 0.35);
+  --ring: rgba(107, 160, 37, 0.35);
 
   --solar-navy: #0b1f33;
   --solar-navy-foreground: #f8faf7;
-  --solar-emerald: #0e7a5f;
+  --solar-emerald: #6ba025;
+  --solar-leaf: #b5d86c;
   --solar-gold: #f5b841;
+  --solar-orange: #f5882a;
   --solar-cream: #fdf6e3;
 
-  --chart-1: #0e7a5f;
+  --chart-1: #6ba025;
   --chart-2: #f5b841;
   --chart-3: #0b1f33;
-  --chart-4: #6ab187;
-  --chart-5: #c2862e;
+  --chart-4: #b5d86c;
+  --chart-5: #f5882a;
 
   --radius: 0.75rem;
   --font-heading: var(--font-sans);
@@ -114,7 +118,7 @@
   --secondary-foreground: #e7eef5;
   --muted: rgba(255, 255, 255, 0.06);
   --muted-foreground: #94a3b8;
-  --accent: #0e7a5f;
+  --accent: #6ba025;
   --accent-foreground: #ffffff;
   --destructive: oklch(0.704 0.191 22.216);
   --border: rgba(255, 255, 255, 0.08);
@@ -123,15 +127,17 @@
 
   --solar-navy: #0b1f33;
   --solar-navy-foreground: #f8faf7;
-  --solar-emerald: #0e7a5f;
+  --solar-emerald: #6ba025;
+  --solar-leaf: #b5d86c;
   --solar-gold: #f5b841;
+  --solar-orange: #f5882a;
   --solar-cream: #fdf6e3;
 
   --chart-1: #f5b841;
-  --chart-2: #0e7a5f;
+  --chart-2: #b5d86c;
   --chart-3: #94a3b8;
-  --chart-4: #6ab187;
-  --chart-5: #c2862e;
+  --chart-4: #6ba025;
+  --chart-5: #f5882a;
 
   --sidebar: #07111d;
   --sidebar-foreground: #e7eef5;

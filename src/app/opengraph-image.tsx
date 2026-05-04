@@ -19,22 +19,35 @@ export default async function Image() {
           justifyContent: "space-between",
           padding: 80,
           background:
-            "radial-gradient(120% 80% at 100% 0%, rgba(245,184,65,0.35) 0%, transparent 60%), radial-gradient(80% 60% at 0% 100%, rgba(14,122,95,0.45) 0%, transparent 60%), linear-gradient(180deg, #0b1f33 0%, #07111d 100%)",
+            "radial-gradient(120% 80% at 100% 0%, rgba(245,184,65,0.35) 0%, transparent 60%), radial-gradient(80% 60% at 0% 100%, rgba(181,216,108,0.45) 0%, transparent 60%), linear-gradient(180deg, #0b1f33 0%, #07111d 100%)",
           color: "#f8faf7",
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: "#f5b841",
-            }}
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <svg
+            width="68"
+            height="68"
+            viewBox="0 0 64 64"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="ogSun" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#F7C84A" />
+                <stop offset="55%" stopColor="#F5982F" />
+                <stop offset="100%" stopColor="#F26B25" />
+              </linearGradient>
+              <linearGradient id="ogPanel" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#C7E37A" />
+                <stop offset="100%" stopColor="#A8CC60" />
+              </linearGradient>
+            </defs>
+            <path d="M14 50 L31 12 L34 12 L19 50 Z" fill="url(#ogSun)" />
+            <path d="M30 28 L57 12 L51.5 28 Z" fill="url(#ogPanel)" />
+            <path d="M24 50 L30 28 L51.5 28 L45.5 50 Z" fill="url(#ogPanel)" />
+          </svg>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 28, fontWeight: 600 }}>DoubleA</span>
+            <span style={{ fontSize: 30, fontWeight: 600 }}>DoubleA Solar</span>
             <span
               style={{
                 fontSize: 14,
@@ -43,7 +56,7 @@ export default async function Image() {
                 opacity: 0.7,
               }}
             >
-              Solar Solutions
+              Solutions
             </span>
           </div>
         </div>

@@ -109,7 +109,7 @@ export function HeroSection() {
 function BackgroundDecor() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-      <div className="absolute inset-x-0 top-0 h-[640px] bg-[radial-gradient(60%_60%_at_50%_0%,rgba(14,122,95,0.08)_0%,transparent_70%)]" />
+      <div className="absolute inset-x-0 top-0 h-[640px] bg-[radial-gradient(60%_60%_at_50%_0%,rgba(107,160,37,0.08)_0%,transparent_70%)]" />
       <div className="absolute -top-40 right-[-10%] size-[640px] rounded-full bg-[radial-gradient(circle_at_center,rgba(245,184,65,0.10)_0%,transparent_60%)]" />
       <svg
         aria-hidden="true"
