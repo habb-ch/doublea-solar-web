@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, MapPin, Search, Sparkles } from "lucide-react";
+import { Loader2, MapPin, Search } from "lucide-react";
 
 import type {
   GeocodeResult,
@@ -26,7 +26,8 @@ export type AddressStepSelection = {
 type Props = {
   initialQuery?: string;
   onSelect: (selection: AddressStepSelection) => void;
-  onSkip: () => void;
+  /** Optional: wird aufgerufen, wenn der User die aktuelle Sonnendach-Auswahl löscht. */
+  onClear?: () => void;
 };
 
 function useDebounced<T>(value: T, delay = 300): T {
@@ -36,6 +37,23 @@ function useDebounced<T>(value: T, delay = 300): T {
     return () => clearTimeout(t);
   }, [value, delay]);
   return debounced;
+}
+
+/**
+ * Default-Auswahl-Filter: nur Segmente, die für PV ernsthaft Sinn ergeben.
+ * Klasse ≥ 3 (Gut, Sehr gut, Hervorragend) UND keine reine Nord-Ausrichtung.
+ * Pure Nordflächen (135° bis 225°, also -135° bis 135° gespiegelt um Süd)
+ * sowie sehr kleine Segmente (< 10 m²) werden nicht vorausgewählt.
+ */
+function isWorthSelecting(s: SonnendachSegment): boolean {
+  if (s.suitabilityClass < 3) return false;
+  if (s.areaM2 < 10) return false;
+  // Bei Flachdach (tilt < 5°) ist die Ausrichtung egal.
+  if (s.tiltDeg < 5) return true;
+  // Sonnendach-Konvention: 0° = Süd, ±180° = Nord. Akzeptiere -135° bis +135°.
+  const a = s.orientationDeg;
+  if (a >= -135 && a <= 135) return true;
+  return false;
 }
 
 function classToColor(klasse: number): string {
@@ -53,7 +71,7 @@ function classLabel(klasse: number): string {
   return "Gering";
 }
 
-export function AddressStep({ initialQuery = "", onSelect, onSkip }: Props) {
+export function AddressStep({ initialQuery = "", onSelect, onClear }: Props) {
   const [query, setQuery] = useState(initialQuery);
   const debouncedQuery = useDebounced(query, 280);
 
@@ -111,13 +129,16 @@ export function AddressStep({ initialQuery = "", onSelect, onSkip }: Props) {
       .then((d: SonnendachQueryResult) => {
         if (cancelled) return;
         setRoofs(d);
-        // Auto-Select des grössten Gebäudes (mit höchstem Stromertrag)
+        // Auto-Select des grössten Gebäudes (mit höchstem Stromertrag).
+        // Default-Segmente: nur die wirklich PV-tauglichen (Klasse ≥ 3 = Gut+
+        // und Orientierung nicht nach Norden), damit wir keine ungeeigneten
+        // Flächen ungewollt mitziehen.
         if (d.buildings[0]) {
           setSelectedBuildingId(d.buildings[0].buildingId);
           setSelectedSegmentIds(
             new Set(
               d.buildings[0].segments
-                .filter((s) => s.suitabilityClass >= 2)
+                .filter((s) => isWorthSelecting(s))
                 .map((s) => s.id),
             ),
           );
@@ -175,6 +196,7 @@ export function AddressStep({ initialQuery = "", onSelect, onSkip }: Props) {
     setRoofs(null);
     setSelectedBuildingId(null);
     setSelectedSegmentIds(new Set());
+    onClear?.();
   }
 
   function toggleSegment(id: number) {
@@ -189,18 +211,22 @@ export function AddressStep({ initialQuery = "", onSelect, onSkip }: Props) {
   function selectBuilding(b: SonnendachBuilding) {
     setSelectedBuildingId(b.buildingId);
     setSelectedSegmentIds(
-      new Set(b.segments.filter((s) => s.suitabilityClass >= 2).map((s) => s.id)),
+      new Set(b.segments.filter((s) => isWorthSelecting(s)).map((s) => s.id)),
     );
   }
 
-  function confirm() {
-    if (!selectedAddress || !selectedBuilding || selectedSegmentIds.size === 0) return;
+  // Auto-Apply: jede Änderung der Auswahl propagiert sofort an den Parent.
+  // So muss der User keinen extra Confirm-Button drücken.
+  useEffect(() => {
+    if (!selectedAddress || !selectedBuilding) return;
     onSelect({
       address: selectedAddress,
       building: selectedBuilding,
       selectedSegmentIds: Array.from(selectedSegmentIds),
     });
-  }
+    // onSelect bewusst nicht in Deps — würde bei Parent-Re-Renders zu Loop führen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAddress, selectedBuilding, selectedSegmentIds]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -303,15 +329,8 @@ export function AddressStep({ initialQuery = "", onSelect, onSkip }: Props) {
               <p className="font-medium">Für diese Adresse sind keine Sonnendach-Daten verfügbar.</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Das BFE-Sonnendach.ch-Register deckt nicht jedes Gebäude ab (z. B. Neubauten oder
-                geschützte Lagen). Sie können den Rechner trotzdem manuell weiterführen.
+                geschützte Lagen). Tragen Sie die Werte unten manuell ein.
               </p>
-              <button
-                type="button"
-                onClick={onSkip}
-                className="ring-focus mt-3 inline-flex h-9 items-center rounded-xl border border-border bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
-              >
-                Manuell weiter
-              </button>
             </div>
           )}
 
@@ -398,38 +417,8 @@ export function AddressStep({ initialQuery = "", onSelect, onSkip }: Props) {
                 </div>
               )}
 
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={onSkip}
-                  className="ring-focus text-xs font-medium text-muted-foreground hover:text-foreground"
-                >
-                  Ohne Sonnendach-Daten weiter
-                </button>
-                <button
-                  type="button"
-                  onClick={confirm}
-                  disabled={!selectedAggregate}
-                  className="ring-focus inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[color:var(--solar-navy)] px-5 text-sm font-semibold text-[color:var(--solar-navy-foreground)] transition-transform hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <Sparkles className="size-4" />
-                  Mit Bundesdaten fortfahren
-                </button>
-              </div>
             </div>
           )}
-        </div>
-      )}
-
-      {!selectedAddress && (
-        <div className="rounded-2xl border border-dashed border-border bg-background/40 p-4 text-center">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="ring-focus text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            Ohne Adresse weiter — ich gebe die Werte selbst ein →
-          </button>
         </div>
       )}
     </div>
