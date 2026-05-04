@@ -4,6 +4,27 @@ import { cantonCodes } from "@/lib/solar/canton-data";
 
 const swissPhoneRegex = /^[+0-9 ()/-]{6,30}$/;
 
+export const heatingTypes = [
+  "oel",
+  "gas",
+  "waermepumpe",
+  "fernwaerme",
+  "holz",
+  "elektro",
+  "andere",
+] as const;
+export type HeatingType = (typeof heatingTypes)[number];
+
+export const heatingTypeLabels: Record<HeatingType, string> = {
+  oel: "Ölheizung",
+  gas: "Gasheizung",
+  waermepumpe: "Wärmepumpe",
+  fernwaerme: "Fernwärme",
+  holz: "Holz / Pellet",
+  elektro: "Elektroheizung",
+  andere: "Andere / unbekannt",
+};
+
 export const leadSchema = z.object({
   name: z.string().trim().min(2, "Bitte geben Sie Ihren Namen an.").max(120),
   email: z.string().trim().email("Bitte geben Sie eine gültige E-Mail-Adresse an."),
@@ -13,6 +34,10 @@ export const leadSchema = z.object({
     .regex(swissPhoneRegex, "Telefonnummer ungültig.")
     .optional()
     .or(z.literal("")),
+  /** Hausadresse (Strasse + PLZ + Ort) — Pflicht auf der Offerten-Seite. */
+  address: z.string().trim().max(240).optional().or(z.literal("")),
+  /** Aktuelle Heizart — Pflicht auf der Offerten-Seite. */
+  heatingType: z.enum(heatingTypes).optional(),
   message: z.string().trim().max(2000).optional().or(z.literal("")),
   consent: z
     .boolean()

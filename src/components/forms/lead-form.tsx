@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
-import { leadSchema, type LeadInput } from "@/lib/validations/lead";
+import { cn } from "@/lib/utils";
+import {
+  heatingTypes,
+  heatingTypeLabels,
+  leadSchema,
+  type LeadInput,
+  type HeatingType,
+} from "@/lib/validations/lead";
 
 type LeadFormProps = {
   source?: string;
@@ -27,15 +35,48 @@ type LeadFormProps = {
   successCta?: ReactNode;
   /** Wenn true: kompakte Variante ohne Nachricht-Feld. */
   compact?: boolean;
+  /**
+   * Wenn true: vollständige Offerten-Anfrage — Telefon, Hausadresse und
+   * Heizart sind Pflicht. Standardvariante (false) verlangt nur Name + Email.
+   */
+  requireFullDetails?: boolean;
 };
+
+/**
+ * Erzeugt das Validierungs-Schema dynamisch je nach `requireFullDetails`.
+ * So können wir das Lead-Schema teilen und gleichzeitig im Offer-Modus
+ * Pflichtfelder erzwingen, ohne den Contact-Form zu brechen.
+ */
+function buildSchema(requireFull: boolean) {
+  if (!requireFull) return leadSchema;
+  const swissPhone = /^[+0-9 ()/-]{6,30}$/;
+  return leadSchema
+    .extend({
+      phone: z
+        .string()
+        .trim()
+        .min(6, "Telefonnummer ist Pflicht.")
+        .regex(swissPhone, "Telefonnummer ungültig."),
+      address: z
+        .string()
+        .trim()
+        .min(5, "Bitte geben Sie Ihre vollständige Adresse an.")
+        .max(240),
+      heatingType: z.enum(heatingTypes, {
+        message: "Bitte wählen Sie Ihre aktuelle Heizart.",
+      }),
+    });
+}
 
 export function LeadForm({
   source = "website",
   context,
   successCta,
   compact = false,
+  requireFullDetails = false,
 }: LeadFormProps) {
   const [submitted, setSubmitted] = useState(false);
+  const schema = buildSchema(requireFullDetails);
   const {
     register,
     handleSubmit,
@@ -44,11 +85,13 @@ export function LeadForm({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<LeadInput>({
-    resolver: zodResolver(leadSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: "",
       email: "",
       phone: "",
+      address: "",
+      heatingType: undefined,
       message: "",
       consent: false,
       source,
@@ -57,6 +100,7 @@ export function LeadForm({
   });
 
   const consent = watch("consent");
+  const heatingType = watch("heatingType");
 
   async function onSubmit(values: LeadInput) {
     try {
@@ -70,7 +114,16 @@ export function LeadForm({
         throw new Error(data.error || "Anfrage konnte nicht gesendet werden.");
       }
       setSubmitted(true);
-      reset({ name: "", email: "", phone: "", message: "", consent: false, source });
+      reset({
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        heatingType: undefined,
+        message: "",
+        consent: false,
+        source,
+      });
       toast.success("Vielen Dank – wir melden uns innert eines Werktags.");
     } catch (e) {
       toast.error(
@@ -100,11 +153,13 @@ export function LeadForm({
     );
   }
 
+  const phoneLabel = requireFullDetails ? "Telefon *" : "Telefon (optional)";
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="lead-name">Name</FieldLabel>
+          <FieldLabel htmlFor="lead-name">Name *</FieldLabel>
           <Input
             id="lead-name"
             autoComplete="name"
@@ -115,31 +170,81 @@ export function LeadForm({
           <FieldError errors={errors.name ? [errors.name] : undefined} />
         </Field>
 
-        <Field>
-          <FieldLabel htmlFor="lead-email">E-Mail</FieldLabel>
-          <Input
-            id="lead-email"
-            type="email"
-            autoComplete="email"
-            placeholder="ihre.adresse@example.ch"
-            aria-invalid={!!errors.email}
-            {...register("email")}
-          />
-          <FieldError errors={errors.email ? [errors.email] : undefined} />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="lead-email">E-Mail *</FieldLabel>
+            <Input
+              id="lead-email"
+              type="email"
+              autoComplete="email"
+              placeholder="ihre.adresse@example.ch"
+              aria-invalid={!!errors.email}
+              {...register("email")}
+            />
+            <FieldError errors={errors.email ? [errors.email] : undefined} />
+          </Field>
 
-        <Field>
-          <FieldLabel htmlFor="lead-phone">Telefon (optional)</FieldLabel>
-          <Input
-            id="lead-phone"
-            type="tel"
-            autoComplete="tel"
-            placeholder="+41 …"
-            aria-invalid={!!errors.phone}
-            {...register("phone")}
-          />
-          <FieldError errors={errors.phone ? [errors.phone] : undefined} />
-        </Field>
+          <Field>
+            <FieldLabel htmlFor="lead-phone">{phoneLabel}</FieldLabel>
+            <Input
+              id="lead-phone"
+              type="tel"
+              autoComplete="tel"
+              placeholder="+41 …"
+              aria-invalid={!!errors.phone}
+              {...register("phone")}
+            />
+            <FieldError errors={errors.phone ? [errors.phone] : undefined} />
+          </Field>
+        </div>
+
+        {requireFullDetails && (
+          <>
+            <Field>
+              <FieldLabel htmlFor="lead-address">Adresse des Objekts *</FieldLabel>
+              <Input
+                id="lead-address"
+                autoComplete="street-address"
+                placeholder="Strasse, PLZ, Ort"
+                aria-invalid={!!errors.address}
+                {...register("address")}
+              />
+              <FieldError errors={errors.address ? [errors.address] : undefined} />
+            </Field>
+
+            <Field>
+              <FieldLabel>Heizart *</FieldLabel>
+              <FieldDescription>
+                Hilft uns, Wärmepumpe und Eigenverbrauch realistisch einzuplanen.
+              </FieldDescription>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {heatingTypes.map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() =>
+                      setValue("heatingType", h as HeatingType, {
+                        shouldValidate: true,
+                      })
+                    }
+                    aria-pressed={heatingType === h}
+                    className={cn(
+                      "ring-focus rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+                      heatingType === h
+                        ? "border-[color:var(--solar-navy)] bg-[color:var(--solar-navy)] text-[color:var(--solar-navy-foreground)]"
+                        : "border-border bg-card hover:bg-secondary",
+                    )}
+                  >
+                    {heatingTypeLabels[h as HeatingType]}
+                  </button>
+                ))}
+              </div>
+              <FieldError
+                errors={errors.heatingType ? [errors.heatingType] : undefined}
+              />
+            </Field>
+          </>
+        )}
 
         {!compact && (
           <Field>
@@ -179,7 +284,7 @@ export function LeadForm({
               <a href="/datenschutz" className="underline underline-offset-4">
                 Datenschutzerklärung
               </a>{" "}
-              einverstanden.
+              einverstanden. *
             </FieldLabel>
             <FieldDescription>
               Wir nutzen Ihre Daten ausschliesslich zur Bearbeitung Ihrer Anfrage.

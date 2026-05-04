@@ -16,11 +16,23 @@ type LeadPayload = {
   name?: string;
   email: string;
   phone?: string | null;
+  address?: string | null;
+  heatingType?: string | null;
   message?: string | null;
   source?: string;
   topic?: string;
   ipHash?: string | null;
   userAgent?: string | null;
+};
+
+const heatingLabels: Record<string, string> = {
+  oel: "Ölheizung",
+  gas: "Gasheizung",
+  waermepumpe: "Wärmepumpe",
+  fernwaerme: "Fernwärme",
+  holz: "Holz / Pellet",
+  elektro: "Elektroheizung",
+  andere: "Andere / unbekannt",
 };
 
 function isEmailConfigured(): boolean {
@@ -79,6 +91,11 @@ function leadHeaderRows(lead: LeadPayload): { html: string; text: string } {
     ["Name", lead.name],
     ["E-Mail", lead.email],
     ["Telefon", lead.phone || null],
+    ["Adresse", lead.address || null],
+    [
+      "Heizart",
+      lead.heatingType ? heatingLabels[lead.heatingType] ?? lead.heatingType : null,
+    ],
     ["Anliegen", lead.topic || null],
     ["Quelle", lead.source || null],
     ["User-Agent", lead.userAgent || null],

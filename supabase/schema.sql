@@ -9,18 +9,24 @@ create extension if not exists "pgcrypto";
 
 -- 2. leads
 create table if not exists public.leads (
-    id           uuid primary key default gen_random_uuid(),
-    created_at   timestamptz not null default now(),
-    source       text not null default 'website',
-    name         text,
-    email        text not null,
-    phone        text,
-    message      text,
-    consent      boolean not null default false,
-    status       text not null default 'new',
-    ip_hash      text,
-    user_agent   text
+    id            uuid primary key default gen_random_uuid(),
+    created_at    timestamptz not null default now(),
+    source        text not null default 'website',
+    name          text,
+    email         text not null,
+    phone         text,
+    address       text,
+    heating_type  text,
+    message       text,
+    consent       boolean not null default false,
+    status        text not null default 'new',
+    ip_hash       text,
+    user_agent    text
 );
+
+-- Migration: Spalten ergänzen (idempotent, nutzt IF NOT EXISTS)
+alter table public.leads add column if not exists address text;
+alter table public.leads add column if not exists heating_type text;
 
 create index if not exists leads_created_at_idx on public.leads (created_at desc);
 create index if not exists leads_email_idx on public.leads (email);

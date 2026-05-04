@@ -70,7 +70,7 @@ export default function AngebotePage() {
             Erzählen Sie uns kurz von Ihrem Vorhaben.
           </p>
           <div className="mt-6">
-            <LeadForm source="angebote" />
+            <LeadForm source="angebote" requireFullDetails />
           </div>
         </div>
       </div>
