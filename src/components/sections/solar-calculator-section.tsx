@@ -75,7 +75,7 @@ export function SolarCalculatorSection() {
 
 function PreviewVisual({ reduce }: { reduce: boolean }) {
   return (
-    <div className="relative aspect-[5/4] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#0b1f33] via-[#0b1f33] to-[#07111d] p-6 lg:p-8">
+    <div className="relative w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#0b1f33] via-[#0b1f33] to-[#07111d] p-6 lg:aspect-[5/4] lg:p-8">
       <div className="absolute -top-16 -right-16 size-64 rounded-full bg-[radial-gradient(circle_at_center,rgba(245,184,65,0.35)_0%,transparent_60%)] blur-2xl" />
       <div className="absolute -bottom-16 -left-16 size-64 rounded-full bg-[radial-gradient(circle_at_center,rgba(107,160,37,0.35)_0%,transparent_60%)] blur-2xl" />
       <div className="relative grid gap-3">
