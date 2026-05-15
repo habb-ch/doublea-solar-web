@@ -108,15 +108,7 @@ export function HeroSection({ content, contact }: Props) {
           }}
           className="relative mx-auto mt-10 w-full max-w-6xl sm:mt-14"
         >
-          <div
-            className="relative aspect-[16/9] w-full"
-            style={{
-              WebkitMaskImage:
-                "radial-gradient(125% 125% at 50% 45%, #000 70%, transparent 100%)",
-              maskImage:
-                "radial-gradient(125% 125% at 50% 45%, #000 70%, transparent 100%)",
-            }}
-          >
+          <div className="relative aspect-[16/9] w-full">
             <Image
               src="/energiesystem.png"
               alt="Energiesystem eines Schweizer Einfamilienhauses: Photovoltaikanlage, Carport-Solar, Wallbox, Wärmepumpe, Wechselrichter, Batteriespeicher und Energiemanager mit Netzanschluss"
@@ -124,6 +116,17 @@ export function HeroSection({ content, contact }: Props) {
               sizes="(max-width: 1280px) 100vw, 1152px"
               className="object-contain"
               priority
+            />
+            {/* Kanten lösen sich randlos in die exakte Seitenfarbe auf */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: [
+                  "linear-gradient(to right, var(--background) 0%, transparent 13%, transparent 87%, var(--background) 100%)",
+                  "linear-gradient(to bottom, var(--background) 0%, transparent 12%, transparent 84%, var(--background) 100%)",
+                ].join(","),
+              }}
             />
           </div>
         </motion.div>
