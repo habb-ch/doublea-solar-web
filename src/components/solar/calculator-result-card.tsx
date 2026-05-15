@@ -109,7 +109,7 @@ export function CalculatorResultCard({ result, onReset }: Props) {
           </button>
         </div>
 
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+        <ul className="mt-6 grid gap-3 md:grid-cols-2">
           {stats.map((s, i) => (
             <StatItem key={s.label} {...s} delay={i * 0.04} reduce={!!reduce} />
           ))}
@@ -224,11 +224,15 @@ function StatItem({
       className={`rounded-2xl border border-border/70 bg-background/60 p-4 transition-opacity ${shown ? "opacity-100" : "opacity-0"}`}
     >
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Icon className="size-4 text-[color:var(--solar-emerald)]" />
-        {label}
+        <Icon className="size-4 shrink-0 text-[color:var(--solar-emerald)]" />
+        <span className="leading-snug">{label}</span>
       </div>
-      <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+      <p className="mt-1 text-lg font-semibold tracking-tight text-foreground break-words sm:text-xl">
+        {value}
+      </p>
+      <p className="mt-0.5 text-xs leading-snug text-muted-foreground break-words">
+        {hint}
+      </p>
     </li>
   );
 }
