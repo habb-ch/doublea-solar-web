@@ -1,7 +1,6 @@
 import { HeroSection } from "@/components/sections/hero-section";
 import { TrustSection } from "@/components/sections/trust-section";
 import { ServicesSection } from "@/components/sections/services-section";
-import { EnergySystemSection } from "@/components/sections/energy-system-section";
 import { ProcessSection } from "@/components/sections/process-section";
 import { SolarCalculatorSection } from "@/components/sections/solar-calculator-section";
 import { FinancingSection } from "@/components/sections/financing-section";
@@ -21,7 +20,6 @@ export default async function HomePage() {
       />
       <TrustSection />
       <ServicesSection />
-      <EnergySystemSection />
       <SolarCalculatorSection />
       <ProcessSection />
       <FinancingSection />

@@ -1,12 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Calculator, Phone } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { siteConfig } from "@/lib/site-config";
 import type { SiteContent } from "@/lib/content/schema";
-import { HeroVisual } from "./hero-visual";
 
 type Props = {
   content: SiteContent["hero"];
@@ -30,8 +30,9 @@ export function HeroSection({ content, contact }: Props) {
   return (
     <section className="relative overflow-hidden">
       <BackgroundDecor />
-      <div className="container-page relative grid items-center gap-8 pt-8 pb-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pt-20 lg:pb-28">
-        <div className="relative">
+      <div className="container-page relative pt-8 pb-12 lg:pt-16 lg:pb-20">
+        {/* Text + CTAs zentriert oben */}
+        <div className="mx-auto max-w-3xl text-center">
           <motion.div
             {...fadeUp(0)}
             className="inline-flex items-center gap-2 rounded-full border border-[color:var(--solar-emerald)]/25 bg-[color:var(--solar-emerald)]/8 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--solar-emerald)] sm:text-xs sm:tracking-[0.16em]"
@@ -42,7 +43,7 @@ export function HeroSection({ content, contact }: Props) {
 
           <motion.h1
             {...fadeUp(0.05)}
-            className="mt-4 text-balance text-[30px] leading-[1.08] font-semibold text-foreground sm:mt-6 sm:text-5xl sm:leading-[1.05] lg:text-[60px]"
+            className="mt-4 text-balance text-[30px] leading-[1.08] font-semibold text-foreground sm:mt-6 sm:text-5xl sm:leading-[1.05] lg:text-[58px]"
           >
             {content.headlineLeading}
             {content.headlineLeading.endsWith(" ") ? "" : " "}
@@ -52,25 +53,25 @@ export function HeroSection({ content, contact }: Props) {
 
           <motion.p
             {...fadeUp(0.12)}
-            className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:mt-6 sm:text-[17px]"
+            className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground sm:mt-6 sm:text-[17px]"
           >
             {content.subheadline}
           </motion.p>
 
           <motion.div
             {...fadeUp(0.2)}
-            className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap"
+            className="mt-6 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row sm:flex-wrap"
           >
             <Link
               href="/solarrechner"
-              className="ring-focus inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[color:var(--solar-navy)] px-5 text-sm font-semibold text-[color:var(--solar-navy-foreground)] shadow-[0_18px_36px_-22px_rgba(11,31,51,0.6)] transition-transform hover:-translate-y-0.5"
+              className="ring-focus inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--solar-navy)] px-5 text-sm font-semibold text-[color:var(--solar-navy-foreground)] shadow-[0_18px_36px_-22px_rgba(11,31,51,0.6)] transition-transform hover:-translate-y-0.5 sm:w-auto"
             >
               <Calculator className="size-4" />
               {content.primaryCtaLabel}
             </Link>
             <Link
               href="/angebote"
-              className="ring-focus inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+              className="ring-focus inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 text-sm font-medium text-foreground transition-colors hover:bg-secondary sm:w-auto"
             >
               {content.secondaryCtaLabel}
               <ArrowRight className="size-4" />
@@ -79,7 +80,7 @@ export function HeroSection({ content, contact }: Props) {
 
           <motion.div
             {...fadeUp(0.28)}
-            className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground sm:mt-8 sm:flex-row sm:items-center sm:gap-4"
+            className="mt-5 flex flex-col items-center gap-2 text-sm text-muted-foreground sm:mt-6 sm:flex-row sm:justify-center sm:gap-4"
           >
             <span className="hidden items-center gap-2 sm:flex">
               <span className="size-1.5 rounded-full bg-[color:var(--solar-gold)]" />
@@ -96,18 +97,35 @@ export function HeroSection({ content, contact }: Props) {
           </motion.div>
         </div>
 
-        {/* Visual: auf Mobile kompakter und nach den CTAs, auf Desktop daneben */}
+        {/* Energiesystem-Bild full-width direkt unter Headline/CTAs */}
         <motion.div
-          initial={{ opacity: 0, y: 16, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{
-            delay: reduce ? 0 : 0.18,
+            delay: reduce ? 0 : 0.32,
             duration: reduce ? 0 : 0.7,
             ease: [0.2, 0.8, 0.2, 1],
           }}
-          className="relative"
+          className="relative mx-auto mt-10 w-full max-w-6xl sm:mt-14"
         >
-          <HeroVisual />
+          <div
+            className="relative aspect-[16/9] w-full"
+            style={{
+              WebkitMaskImage:
+                "radial-gradient(125% 125% at 50% 45%, #000 70%, transparent 100%)",
+              maskImage:
+                "radial-gradient(125% 125% at 50% 45%, #000 70%, transparent 100%)",
+            }}
+          >
+            <Image
+              src="/energiesystem.png"
+              alt="Energiesystem eines Schweizer Einfamilienhauses: Photovoltaikanlage, Carport-Solar, Wallbox, Wärmepumpe, Wechselrichter, Batteriespeicher und Energiemanager mit Netzanschluss"
+              fill
+              sizes="(max-width: 1280px) 100vw, 1152px"
+              className="object-contain"
+              priority
+            />
+          </div>
         </motion.div>
       </div>
     </section>
