@@ -30,7 +30,7 @@ export function FaqSection({ items, email }: Props = {}) {
   };
 
   return (
-    <section id="faq" className="container-page py-24">
+    <section id="faq" className="container-page py-16 sm:py-24">
       <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--solar-emerald)]">

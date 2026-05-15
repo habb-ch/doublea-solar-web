@@ -28,7 +28,7 @@ const points = [
 export function FinancingSection() {
   const reduce = useReducedMotion();
   return (
-    <section id="finanzierung" className="container-page py-24">
+    <section id="finanzierung" className="container-page py-16 sm:py-24">
       <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.05fr]">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--solar-emerald)]">

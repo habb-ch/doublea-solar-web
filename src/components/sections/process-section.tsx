@@ -39,7 +39,7 @@ export function ProcessSection() {
   const reduce = useReducedMotion();
   return (
     <section id="prozess" className="surface-navy grain-overlay relative overflow-hidden">
-      <div className="container-page relative py-24">
+      <div className="container-page relative py-16 sm:py-24">
         <div className="max-w-2xl">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--solar-gold)]">
             Ihr Weg zur eigenen Solaranlage

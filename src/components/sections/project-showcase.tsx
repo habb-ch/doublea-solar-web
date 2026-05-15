@@ -38,7 +38,7 @@ const types = [
 export function ProjectShowcase() {
   const reduce = useReducedMotion();
   return (
-    <section id="projekte" className="container-page py-24">
+    <section id="projekte" className="container-page py-16 sm:py-24">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--solar-emerald)]">

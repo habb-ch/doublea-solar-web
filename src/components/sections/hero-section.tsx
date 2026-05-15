@@ -30,11 +30,11 @@ export function HeroSection({ content, contact }: Props) {
   return (
     <section className="relative overflow-hidden">
       <BackgroundDecor />
-      <div className="container-page relative grid items-center gap-12 pt-12 pb-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pt-20 lg:pb-28">
+      <div className="container-page relative grid items-center gap-8 pt-8 pb-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pt-20 lg:pb-28">
         <div className="relative">
           <motion.div
             {...fadeUp(0)}
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--solar-emerald)]/25 bg-[color:var(--solar-emerald)]/8 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--solar-emerald)]"
+            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--solar-emerald)]/25 bg-[color:var(--solar-emerald)]/8 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--solar-emerald)] sm:text-xs sm:tracking-[0.16em]"
           >
             <span className="size-1.5 rounded-full bg-[color:var(--solar-emerald)]" />
             {content.eyebrow}
@@ -42,7 +42,7 @@ export function HeroSection({ content, contact }: Props) {
 
           <motion.h1
             {...fadeUp(0.05)}
-            className="mt-6 text-balance text-[40px] leading-[1.05] font-semibold text-foreground sm:text-5xl lg:text-[60px]"
+            className="mt-4 text-balance text-[30px] leading-[1.08] font-semibold text-foreground sm:mt-6 sm:text-5xl sm:leading-[1.05] lg:text-[60px]"
           >
             {content.headlineLeading}
             {content.headlineLeading.endsWith(" ") ? "" : " "}
@@ -52,14 +52,14 @@ export function HeroSection({ content, contact }: Props) {
 
           <motion.p
             {...fadeUp(0.12)}
-            className="mt-6 max-w-xl text-[17px] leading-relaxed text-muted-foreground"
+            className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:mt-6 sm:text-[17px]"
           >
             {content.subheadline}
           </motion.p>
 
           <motion.div
             {...fadeUp(0.2)}
-            className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap"
+            className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap"
           >
             <Link
               href="/solarrechner"
@@ -79,9 +79,9 @@ export function HeroSection({ content, contact }: Props) {
 
           <motion.div
             {...fadeUp(0.28)}
-            className="mt-8 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:gap-4"
+            className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground sm:mt-8 sm:flex-row sm:items-center sm:gap-4"
           >
-            <span className="flex items-center gap-2">
+            <span className="hidden items-center gap-2 sm:flex">
               <span className="size-1.5 rounded-full bg-[color:var(--solar-gold)]" />
               Persönliche Beratung in Deutsch & Schweizerdeutsch
             </span>
@@ -96,6 +96,7 @@ export function HeroSection({ content, contact }: Props) {
           </motion.div>
         </div>
 
+        {/* Visual: auf Mobile kompakter und nach den CTAs, auf Desktop daneben */}
         <motion.div
           initial={{ opacity: 0, y: 16, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}

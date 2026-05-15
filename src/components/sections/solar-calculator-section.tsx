@@ -14,7 +14,7 @@ const benefits = [
 export function SolarCalculatorSection() {
   const reduce = useReducedMotion();
   return (
-    <section id="rechner" className="container-page py-24">
+    <section id="rechner" className="container-page py-16 sm:py-24">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}

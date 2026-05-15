@@ -21,7 +21,7 @@ export function CtaBand({
   secondaryLabel = "Beratung anfragen",
 }: CtaBandProps) {
   return (
-    <section className="container-page my-24">
+    <section className="container-page my-16 sm:my-24">
       <div className="surface-navy grain-overlay relative overflow-hidden rounded-3xl px-8 py-14 lg:px-16 lg:py-20">
         <div className="relative grid items-center gap-10 lg:grid-cols-[1.4fr_1fr]">
           <div>

@@ -60,7 +60,7 @@ const services = [
 export function ServicesSection() {
   const reduce = useReducedMotion();
   return (
-    <section id="leistungen" className="container-page py-24">
+    <section id="leistungen" className="container-page py-16 sm:py-24">
       <div className="mx-auto max-w-2xl text-center">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--solar-emerald)]">
           Unsere Leistungen
