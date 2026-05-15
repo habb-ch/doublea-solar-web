@@ -90,7 +90,7 @@ function PreviewVisual({ reduce }: { reduce: boolean }) {
           <Stat label="Jahresproduktion" value="≈ 9'400 kWh" />
           <Stat label="Eigenverbrauch" value="≈ 38 %" />
           <Stat label="Ersparnis / Jahr" value="≈ CHF 1'700" />
-          <Stat label="Amortisation" value="≈ 11 J." />
+          <Stat label="Amortisation" value="≈ 11 Jahre" />
         </div>
         <motion.div
           initial={{ opacity: 0 }}
@@ -108,11 +108,13 @@ function PreviewVisual({ reduce }: { reduce: boolean }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/55">
+    <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-3.5">
+      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/55">
         {label}
       </p>
-      <p className="mt-1 text-base font-semibold text-white">{value}</p>
+      <p className="mt-1 whitespace-nowrap text-[15px] font-semibold tracking-tight text-white sm:text-base">
+        {value}
+      </p>
     </div>
   );
 }
